@@ -9,7 +9,7 @@ web
 ## Stack
 
 React 18, TypeScript, Vite. TanStack Query manages remote state, zustand manages transient UI and in-memory auth state.
-The application is a client-only SPA deployed through local preview or GitHub Pages.
+The application is a client-only SPA run through the local Vite development server or local preview build.
 
 ## Users
 

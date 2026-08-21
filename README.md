@@ -63,14 +63,8 @@ http://localhost:5173
 http://localhost:4173
 ```
 
-5. GitHub Pages에도 배포한다면 다음 원본도 추가합니다. 저장소 경로는 넣지 않습니다.
-
-```text
-https://<GITHUB_USERNAME>.github.io
-```
-
-6. 별도 승인된 리디렉션 URI는 필요하지 않습니다.
-7. 생성된 클라이언트 ID를 복사합니다.
+5. 별도 승인된 리디렉션 URI는 필요하지 않습니다.
+6. 생성된 클라이언트 ID를 복사합니다.
 
 ### 5. 환경 변수 설정
 
@@ -122,22 +116,6 @@ IdeaBox/
 
 폴더와 파일 ID는 `idea-box:workspace:v1` 키로 localStorage에 캐시합니다. 액세스 토큰은 이 캐시에 포함되지
 않습니다. 캐시된 파일이 사라졌다면 앱이 다시 탐색하거나 필요한 항목을 생성합니다.
-
-## GitHub Pages 배포
-
-프로젝트에는 `.github/workflows/deploy-pages.yml`이 포함되어 있습니다. `main` 브랜치에 push하거나 Actions
-화면에서 수동 실행하면 테스트와 빌드 후 `dist/`를 배포합니다.
-
-1. GitHub 저장소의 **Settings → Pages**를 엽니다.
-2. **Build and deployment → Source**를 **GitHub Actions**로 선택합니다.
-3. **Settings → Secrets and variables → Actions → Variables**에서 저장소 변수
-   `VITE_GOOGLE_CLIENT_ID`를 만들고 OAuth 클라이언트 ID를 입력합니다.
-4. Google Cloud의 승인된 JavaScript 원본에 `https://<GITHUB_USERNAME>.github.io`가 등록되어 있는지
-   확인합니다.
-5. `main` 브랜치에 push하거나 **Actions → Deploy Idea Box to GitHub Pages → Run workflow**를 실행합니다.
-
-Vite의 `base`는 상대 경로로 설정되어 있어 `https://<GITHUB_USERNAME>.github.io/<REPOSITORY>/` 형태의
-프로젝트 페이지와 로컬 preview에서 같은 빌드를 사용할 수 있습니다.
 
 ## 명령어
 
