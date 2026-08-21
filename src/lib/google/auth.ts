@@ -9,10 +9,11 @@ const GIS_SCRIPT_ID = 'google-identity-services';
 const GIS_SCRIPT_SRC = 'https://accounts.google.com/gsi/client';
 export const TOKEN_EXPIRY_BUFFER_MS = 5 * 60_000;
 
-type TokenPrompt = '';
+type TokenPrompt = '' | 'none';
 
 let tokenClient: GoogleTokenClient | null = null;
 let clientId: string | null = null;
+let loginHint: string | null = null;
 let scriptPromise: Promise<void> | null = null;
 let renewalPromise: Promise<string> | null = null;
 
@@ -105,16 +106,34 @@ function requestToken(prompt: TokenPrompt): Promise<string> {
         client.error_callback = (error) => {
           reject(new GoogleAuthError(popupErrorMessage(error.type, error.message), error.type));
         };
-        client.requestAccessToken({ prompt });
+        client.requestAccessToken({ prompt, ...(loginHint ? { login_hint: loginHint } : {}) });
       })
   );
 }
 
-export function configureGoogleAuth(nextClientId: string | undefined): void {
+export function configureGoogleAuth(nextClientId: string | undefined, nextLoginHint?: string): void {
   clientId = nextClientId?.trim() || null;
+  loginHint = nextLoginHint?.trim() || null;
   tokenClient = null;
   renewalPromise = null;
   useAuthStore.getState().clear(clientId ? 'signed-out' : 'unconfigured');
+}
+
+export function hasGoogleLoginHint(): boolean {
+  return Boolean(loginHint);
+}
+
+export async function prepareGoogleAuth(): Promise<void> {
+  if (!clientId) {
+    return;
+  }
+
+  try {
+    await getTokenClient();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Google 로그인 도구를 준비하지 못했습니다.';
+    useAuthStore.getState().setError(message);
+  }
 }
 
 export async function signIn(): Promise<string> {
@@ -143,7 +162,7 @@ export async function getValidAccessToken(forceRenew = false): Promise<string> {
     useAuthStore.getState().setStatus('renewing');
 
     try {
-      return await requestToken('');
+      return await requestToken('none');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Google 로그인이 만료되었습니다.';
       useAuthStore.getState().setError(`${message} 다시 로그인해 주세요.`);

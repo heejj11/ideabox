@@ -12,6 +12,7 @@ import { IdeaDetailPanel } from '../features/ideas/IdeaDetailPanel';
 import { useCreateIdeaMutation, useIdeasQuery, useUpdateIdeaMutation } from '../features/ideas/queries';
 import {
   getValidAccessToken,
+  hasGoogleLoginHint,
   signIn,
   signOut,
   TOKEN_EXPIRY_BUFFER_MS,
@@ -112,7 +113,12 @@ export function App() {
         onSignIn={handleSignIn}
         onSignOut={handleSignOut}
       />
-      <AuthNotice status={auth.status} error={auth.error} onSignIn={handleSignIn} />
+      <AuthNotice
+        status={auth.status}
+        error={auth.error}
+        resumeAvailable={hasGoogleLoginHint()}
+        onSignIn={handleSignIn}
+      />
       {ideasQuery.data?.warning ? <ErrorBanner message={ideasQuery.data.warning} onRetry={() => void ideasQuery.refetch()} /> : null}
       {visibleError ? <ErrorBanner message={visibleError} onRetry={() => void ideasQuery.refetch()} onDismiss={() => setDismissedError(visibleError)} /> : null}
       <IdeaComposer

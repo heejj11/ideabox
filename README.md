@@ -78,10 +78,16 @@ cp .env.example .env.local
 
 ```dotenv
 VITE_GOOGLE_CLIENT_ID=000000000000-example.apps.googleusercontent.com
+# 선택: 여러 계정 중 자동 재연결할 1인용 계정
+VITE_GOOGLE_LOGIN_HINT=your-google-account@example.com
 ```
 
 OAuth 클라이언트 ID는 브라우저 앱을 식별하는 공개 값이지만, 저장소별 설정을 위해 `.env.local`은 Git에서
 제외되어 있습니다. 액세스 토큰은 앱 메모리에만 존재하며 localStorage나 IndexedDB에 저장하지 않습니다.
+`VITE_GOOGLE_LOGIN_HINT`를 지정하면 새로고침 후 `Idea Box 이어서 열기`를 한 번 누르는 것만으로
+계정 선택 화면 없이 재연결됩니다. 이메일은 OAuth 요청의 계정 힌트로만 사용합니다. Google의 브라우저
+토큰 방식은 토큰 발급 시 사용자 동작을 요구하므로, 토큰을 저장하지 않는 이 앱에서는 새로고침 후
+한 번의 클릭이 필요합니다.
 
 ## 로컬 실행
 
@@ -147,7 +153,8 @@ IdeaBox/
 ### 새로고침 후 Google 연결 버튼이 다시 표시됨
 
 보안을 위해 액세스 토큰은 브라우저 저장소에 남기지 않고 현재 페이지의 메모리에만 둡니다. 따라서 전체 새로고침이나
-탭을 닫은 뒤에는 **Google로 시작하기**를 한 번 눌러야 합니다. 이미 허용한 권한은 다시 묻지 않고 이어서 연결합니다.
+탭을 닫은 뒤에는 **Idea Box 이어서 열기**를 한 번 눌러야 합니다. 계정 힌트를 설정했다면 계정 선택 화면이나
+권한 확인 없이 바로 이어서 연결합니다.
 페이지를 계속 열어 둔 동안에는 토큰 만료 전에 다음 클릭 또는 키 입력 시점에 자동 갱신을 시도합니다.
 
 ### `origin_mismatch` 또는 OAuth 400 오류

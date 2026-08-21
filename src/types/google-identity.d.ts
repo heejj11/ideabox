@@ -11,6 +11,7 @@ interface GoogleTokenResponse {
 interface GoogleTokenClientConfig {
   client_id: string;
   scope: string;
+  login_hint?: string;
   callback: (response: GoogleTokenResponse) => void;
   error_callback?: (error: { type: string; message?: string }) => void;
 }
@@ -18,7 +19,10 @@ interface GoogleTokenClientConfig {
 interface GoogleTokenClient {
   callback: (response: GoogleTokenResponse) => void;
   error_callback?: (error: { type: string; message?: string }) => void;
-  requestAccessToken: (overrideConfig?: { prompt?: '' | 'none' | 'consent' | 'select_account' }) => void;
+  requestAccessToken: (overrideConfig?: {
+    prompt?: '' | 'none' | 'consent' | 'select_account';
+    login_hint?: string;
+  }) => void;
 }
 
 interface GoogleOAuth2Api {
