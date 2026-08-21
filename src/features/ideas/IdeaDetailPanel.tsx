@@ -11,8 +11,10 @@ import {
 import { IDEA_STATUS_LABELS, IDEA_STATUSES, type DraftAttachment, type Idea, type IdeaStatus, type IdeaUpdate } from '../../types/idea';
 import { resolveIdeaTitle } from '../../lib/utils/ideaTitle';
 import { AttachmentPicker } from '../composer/AttachmentPicker';
+import { ImageLightbox } from './ImageLightbox';
 import { ImageCleanupError } from './ideaRepository';
-import { IdeaImage } from './IdeaImage';
+import { IdeaImage, type IdeaImageOpenPayload } from './IdeaImage';
+import { LocalSitePanel } from './LocalSitePanel';
 import { MarkdownContent } from './MarkdownContent';
 
 interface IdeaDetailPanelProps {
@@ -60,6 +62,7 @@ export function IdeaDetailPanel({ idea, readOnly, saving, onClose, onSave }: Ide
   const openerRef = useRef<HTMLElement | null>(document.activeElement instanceof HTMLElement ? document.activeElement : null);
   const attachmentsRef = useRef<DraftAttachment[]>([]);
   const resizeStartRef = useRef<{ pointerX: number; panelWidth: number } | null>(null);
+  const lightboxTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [title, setTitle] = useState(idea.title);
   const [body, setBody] = useState(idea.body);
   const [tagsText, setTagsText] = useState(idea.tags.join(', '));
@@ -69,6 +72,7 @@ export function IdeaDetailPanel({ idea, readOnly, saving, onClose, onSave }: Ide
   const [removedImageIds, setRemovedImageIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [panelWidth, setPanelWidth] = useState(readPanelWidth);
+  const [lightboxImage, setLightboxImage] = useState<IdeaImageOpenPayload | null>(null);
 
   useEffect(() => {
     attachmentsRef.current = newAttachments;
@@ -90,12 +94,18 @@ export function IdeaDetailPanel({ idea, readOnly, saving, onClose, onSave }: Ide
     setRemovedImageIds([]);
     setNewAttachments([]);
     setError(null);
+    setLightboxImage(null);
     window.setTimeout(() => (readOnly ? closeRef.current : titleRef.current)?.focus(), 0);
   }, [idea.id, readOnly]);
 
   useEffect(() => {
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') {
+        if (lightboxImage) {
+          event.preventDefault();
+          setLightboxImage(null);
+          return;
+        }
         onClose();
         return;
       }
@@ -118,14 +128,17 @@ export function IdeaDetailPanel({ idea, readOnly, saving, onClose, onSave }: Ide
         first.focus();
       }
     };
-    document.body.classList.add('panel-open');
     window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxImage, onClose]);
+
+  useEffect(() => {
+    document.body.classList.add('panel-open');
     return () => {
       document.body.classList.remove('panel-open');
-      window.removeEventListener('keydown', handleKeyDown);
       openerRef.current?.focus();
     };
-  }, [onClose]);
+  }, []);
 
   useEffect(() => {
     const handleViewportResize = () => setPanelWidth((current) => clampPanelWidth(current));
@@ -285,13 +298,22 @@ export function IdeaDetailPanel({ idea, readOnly, saving, onClose, onSave }: Ide
               </section>
             ) : null}
           </div>
+          <LocalSitePanel markdown={body} />
           {visibleImageIds.length ? (
             <section className="detail-images" aria-label="현재 첨부 이미지">
               {visibleImageIds.map((fileId, index) => (
                 <figure key={fileId}>
-                  <IdeaImage fileId={fileId} alt={`${idea.title} 첨부 이미지 ${index + 1}`} />
+                  <IdeaImage
+                    fileId={fileId}
+                    alt={`${idea.title} 첨부 이미지 ${index + 1}`}
+                    onOpen={(image, trigger) => {
+                      lightboxTriggerRef.current = trigger;
+                      setLightboxImage(image);
+                    }}
+                  />
                   <button
                     type="button"
+                    className="attachment-remove-button"
                     disabled={readOnly || saving}
                     onClick={() => setRemovedImageIds((current) => [...current, fileId])}
                   >
@@ -351,6 +373,13 @@ export function IdeaDetailPanel({ idea, readOnly, saving, onClose, onSave }: Ide
           </footer>
         </form>
       </aside>
+      {lightboxImage ? (
+        <ImageLightbox
+          image={lightboxImage}
+          onClose={() => setLightboxImage(null)}
+          returnFocusTo={lightboxTriggerRef.current}
+        />
+      ) : null}
     </div>
   );
 }

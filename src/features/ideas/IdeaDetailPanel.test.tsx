@@ -6,7 +6,24 @@ import { IdeaDetailPanel } from './IdeaDetailPanel';
 import { ImageCleanupError } from './ideaRepository';
 
 vi.mock('./IdeaImage', () => ({
-  IdeaImage: ({ alt }: { alt: string }) => <img alt={alt} />,
+  IdeaImage: ({
+    alt,
+    onOpen,
+  }: {
+    alt: string;
+    onOpen?: (image: { src: string; alt: string }, trigger: HTMLButtonElement) => void;
+  }) =>
+    onOpen ? (
+      <button
+        type="button"
+        aria-label={`${alt} 크게 보기`}
+        onClick={(event) => onOpen({ src: 'blob:image', alt }, event.currentTarget)}
+      >
+        <img alt={alt} />
+      </button>
+    ) : (
+      <img alt={alt} />
+    ),
 }));
 
 describe('Idea detail attachment recovery', () => {
@@ -66,5 +83,29 @@ describe('Idea detail attachment recovery', () => {
 
     expect(resizeHandle).toHaveAttribute('aria-valuenow', '944');
     expect(localStorage.getItem('idea-box:detail-panel-width')).toBe('944');
+  });
+
+  it('opens an attached image large and closes only the image on Escape', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(
+      <IdeaDetailPanel
+        idea={{ ...demoIdeas[0]!, imageIds: ['idea-image'] }}
+        readOnly={false}
+        saving={false}
+        onClose={onClose}
+        onSave={vi.fn()}
+      />
+    );
+
+    const imageButton = screen.getByRole('button', { name: `${demoIdeas[0]!.title} 첨부 이미지 1 크게 보기` });
+    await user.click(imageButton);
+    expect(screen.getByRole('dialog', { name: '이미지 크게 보기' })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(screen.queryByRole('dialog', { name: '이미지 크게 보기' })).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(imageButton).toHaveFocus();
   });
 });
