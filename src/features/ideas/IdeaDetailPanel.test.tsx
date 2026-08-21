@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { demoIdeas } from './demoIdeas';
@@ -11,6 +11,7 @@ vi.mock('./IdeaImage', () => ({
 
 describe('Idea detail attachment recovery', () => {
   beforeEach(() => {
+    localStorage.clear();
     Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:preview') });
     Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
   });
@@ -45,5 +46,25 @@ describe('Idea detail attachment recovery', () => {
 
     await user.click(screen.getByRole('button', { name: '변경 저장' }));
     expect(onSave).toHaveBeenLastCalledWith(expect.any(Object), [], []);
+  });
+
+  it('resizes the panel with the keyboard and remembers the width', () => {
+    render(
+      <IdeaDetailPanel
+        idea={demoIdeas[0]!}
+        readOnly={false}
+        saving={false}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />
+    );
+
+    const resizeHandle = screen.getByRole('separator', { name: '아이디어 패널 너비 조절' });
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '920');
+
+    fireEvent.keyDown(resizeHandle, { key: 'ArrowLeft' });
+
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '944');
+    expect(localStorage.getItem('idea-box:detail-panel-width')).toBe('944');
   });
 });

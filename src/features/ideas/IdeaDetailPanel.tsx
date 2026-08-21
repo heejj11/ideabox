@@ -1,4 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { IDEA_STATUS_LABELS, IDEA_STATUSES, type DraftAttachment, type Idea, type IdeaStatus, type IdeaUpdate } from '../../types/idea';
 import { resolveIdeaTitle } from '../../lib/utils/ideaTitle';
 import { AttachmentPicker } from '../composer/AttachmentPicker';
@@ -12,6 +21,28 @@ interface IdeaDetailPanelProps {
   saving: boolean;
   onClose: () => void;
   onSave: (changes: IdeaUpdate, newFiles: File[], removedImageIds: string[]) => Promise<void>;
+}
+
+const DETAIL_PANEL_WIDTH_KEY = 'idea-box:detail-panel-width';
+const DEFAULT_DETAIL_PANEL_WIDTH = 920;
+const MIN_DETAIL_PANEL_WIDTH = 620;
+const MAX_DETAIL_PANEL_WIDTH = 1280;
+const DETAIL_PANEL_VIEWPORT_GUTTER = 56;
+
+function getMaximumPanelWidth(): number {
+  return Math.min(
+    MAX_DETAIL_PANEL_WIDTH,
+    Math.max(MIN_DETAIL_PANEL_WIDTH, window.innerWidth - DETAIL_PANEL_VIEWPORT_GUTTER)
+  );
+}
+
+function clampPanelWidth(width: number): number {
+  return Math.min(getMaximumPanelWidth(), Math.max(MIN_DETAIL_PANEL_WIDTH, width));
+}
+
+function readPanelWidth(): number {
+  const storedWidth = Number.parseInt(localStorage.getItem(DETAIL_PANEL_WIDTH_KEY) ?? '', 10);
+  return clampPanelWidth(Number.isFinite(storedWidth) ? storedWidth : DEFAULT_DETAIL_PANEL_WIDTH);
 }
 
 function createAttachment(file: File): DraftAttachment {
@@ -28,6 +59,7 @@ export function IdeaDetailPanel({ idea, readOnly, saving, onClose, onSave }: Ide
   const panelRef = useRef<HTMLElement>(null);
   const openerRef = useRef<HTMLElement | null>(document.activeElement instanceof HTMLElement ? document.activeElement : null);
   const attachmentsRef = useRef<DraftAttachment[]>([]);
+  const resizeStartRef = useRef<{ pointerX: number; panelWidth: number } | null>(null);
   const [title, setTitle] = useState(idea.title);
   const [body, setBody] = useState(idea.body);
   const [tagsText, setTagsText] = useState(idea.tags.join(', '));
@@ -36,6 +68,7 @@ export function IdeaDetailPanel({ idea, readOnly, saving, onClose, onSave }: Ide
   const [newAttachments, setNewAttachments] = useState<DraftAttachment[]>([]);
   const [removedImageIds, setRemovedImageIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [panelWidth, setPanelWidth] = useState(readPanelWidth);
 
   useEffect(() => {
     attachmentsRef.current = newAttachments;
@@ -94,6 +127,12 @@ export function IdeaDetailPanel({ idea, readOnly, saving, onClose, onSave }: Ide
     };
   }, [onClose]);
 
+  useEffect(() => {
+    const handleViewportResize = () => setPanelWidth((current) => clampPanelWidth(current));
+    window.addEventListener('resize', handleViewportResize);
+    return () => window.removeEventListener('resize', handleViewportResize);
+  }, []);
+
   const visibleImageIds = useMemo(
     () => idea.imageIds.filter((imageId) => !removedImageIds.includes(imageId)),
     [idea.imageIds, removedImageIds]
@@ -104,6 +143,57 @@ export function IdeaDetailPanel({ idea, readOnly, saving, onClose, onSave }: Ide
     setNewAttachments([]);
     setRemovedImageIds([]);
   };
+
+  const persistPanelWidth = (width: number) => {
+    const nextWidth = clampPanelWidth(width);
+    setPanelWidth(nextWidth);
+    localStorage.setItem(DETAIL_PANEL_WIDTH_KEY, String(nextWidth));
+  };
+
+  const handleResizePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    if (typeof event.currentTarget.setPointerCapture === 'function') {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    resizeStartRef.current = { pointerX: event.clientX, panelWidth };
+    document.body.classList.add('panel-resizing');
+  };
+
+  const handleResizePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!resizeStartRef.current) return;
+    const nextWidth = resizeStartRef.current.panelWidth + resizeStartRef.current.pointerX - event.clientX;
+    setPanelWidth(clampPanelWidth(nextWidth));
+  };
+
+  const handleResizePointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!resizeStartRef.current) return;
+    resizeStartRef.current = null;
+    document.body.classList.remove('panel-resizing');
+    if (
+      typeof event.currentTarget.hasPointerCapture === 'function' &&
+      event.currentTarget.hasPointerCapture(event.pointerId)
+    ) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    localStorage.setItem(DETAIL_PANEL_WIDTH_KEY, String(panelWidth));
+  };
+
+  const handleResizeKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const widthStep = event.shiftKey ? 80 : 24;
+    let nextWidth: number | null = null;
+
+    if (event.key === 'ArrowLeft') nextWidth = panelWidth + widthStep;
+    if (event.key === 'ArrowRight') nextWidth = panelWidth - widthStep;
+    if (event.key === 'Home') nextWidth = MIN_DETAIL_PANEL_WIDTH;
+    if (event.key === 'End') nextWidth = getMaximumPanelWidth();
+    if (nextWidth === null) return;
+
+    event.preventDefault();
+    persistPanelWidth(nextWidth);
+  };
+
+  const panelStyle = { '--detail-panel-width': `${panelWidth}px` } as CSSProperties;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -144,7 +234,31 @@ export function IdeaDetailPanel({ idea, readOnly, saving, onClose, onSave }: Ide
 
   return (
     <div className="detail-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <aside ref={panelRef} className="detail-panel" role="dialog" aria-modal="true" aria-labelledby="detail-panel-title">
+      <aside
+        ref={panelRef}
+        className="detail-panel"
+        style={panelStyle}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="detail-panel-title"
+      >
+        <div
+          className="detail-panel__resize-handle"
+          role="separator"
+          aria-label="아이디어 패널 너비 조절"
+          aria-orientation="vertical"
+          aria-valuemin={MIN_DETAIL_PANEL_WIDTH}
+          aria-valuemax={getMaximumPanelWidth()}
+          aria-valuenow={Math.round(panelWidth)}
+          tabIndex={0}
+          title="드래그하거나 좌우 방향키로 폭 조절 · 더블클릭으로 초기화"
+          onDoubleClick={() => persistPanelWidth(DEFAULT_DETAIL_PANEL_WIDTH)}
+          onKeyDown={handleResizeKeyDown}
+          onPointerDown={handleResizePointerDown}
+          onPointerMove={handleResizePointerMove}
+          onPointerUp={handleResizePointerEnd}
+          onPointerCancel={handleResizePointerEnd}
+        />
         <header className="detail-panel__header">
           <div>
             <span>IDEA / {new Date(idea.createdAt).toLocaleDateString('ko-KR')}</span>
@@ -159,16 +273,18 @@ export function IdeaDetailPanel({ idea, readOnly, saving, onClose, onSave }: Ide
             <span>제목</span>
             <input ref={titleRef} value={title} onChange={(event) => setTitle(event.target.value)} disabled={readOnly || saving} />
           </label>
-          <label className="field field--stacked">
-            <span>본문 · Markdown</span>
-            <textarea value={body} onChange={(event) => setBody(event.target.value)} rows={9} disabled={readOnly || saving} />
-          </label>
-          {body ? (
-            <section className="markdown-preview" aria-label="Markdown 미리보기">
-              <span>미리보기</span>
-              <MarkdownContent>{body}</MarkdownContent>
-            </section>
-          ) : null}
+          <div className="detail-writing-grid">
+            <label className="field field--stacked detail-writing-grid__editor">
+              <span>본문 · Markdown</span>
+              <textarea value={body} onChange={(event) => setBody(event.target.value)} rows={14} disabled={readOnly || saving} />
+            </label>
+            {body ? (
+              <section className="markdown-preview" aria-label="Markdown 미리보기">
+                <span>미리보기</span>
+                <MarkdownContent>{body}</MarkdownContent>
+              </section>
+            ) : null}
+          </div>
           {visibleImageIds.length ? (
             <section className="detail-images" aria-label="현재 첨부 이미지">
               {visibleImageIds.map((fileId, index) => (
