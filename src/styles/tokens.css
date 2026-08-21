@@ -1,0 +1,23 @@
+:root {
+  color-scheme: light;
+  --ib-bg: #cdbfa6;
+  --ib-surface: #fdfbf4;
+  --ib-surface-2: #f0e8d6;
+  --ib-ink: #1f1b16;
+  --ib-ink-2: #4e463b;
+  --ib-ink-3: #746a5b;
+  --ib-accent: #d8452f;
+  --ib-accent-dark: #aa2e20;
+  --ib-accent-deep: #842419;
+  --ib-tape: rgba(226, 205, 130, 0.62);
+  --ib-success: #416348;
+  --ib-warning: #7a4d16;
+  --ib-error: #9f2c23;
+  --ib-focus: #245b79;
+  --ib-font-body: 'Pretendard Variable', Pretendard, sans-serif;
+  --ib-font-mono: 'Special Elite', monospace;
+  --ib-font-hand: 'Nanum Pen Script', cursive;
+  --ib-radius: 3px;
+  --ib-shadow: 3px 5px 0 rgba(31, 27, 22, 0.16);
+  --ib-shadow-raised: 5px 8px 0 rgba(31, 27, 22, 0.18);
+}
