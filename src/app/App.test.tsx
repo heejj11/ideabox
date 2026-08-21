@@ -1,6 +1,8 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach } from 'vitest';
+import { demoIdeas } from '../features/ideas/demoIdeas';
+import { ideaKeys } from '../features/ideas/queries';
 import { useAuthStore } from '../stores/authStore';
 import { useUiStore } from '../stores/uiStore';
 import { App } from './App';
@@ -21,8 +23,7 @@ afterEach(() => {
 });
 
 describe('Idea Box app shell', () => {
-  it('shows a useful signed-out preview and opens a read-only detail panel', async () => {
-    const user = userEvent.setup();
+  it('shows an empty board while signed out instead of sample ideas', () => {
     render(
       <AppProviders>
         <App />
@@ -30,13 +31,14 @@ describe('Idea Box app shell', () => {
     );
 
     expect(screen.getByText('Google 연결 설정이 필요해요')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '퇴근길 생각 수집기' }));
-    expect(screen.getByRole('dialog', { name: '아이디어 다듬기' })).toBeInTheDocument();
-    expect(screen.getByText('지금은 읽기 전용입니다. 온라인으로 다시 연결한 뒤 수정해 주세요.')).toBeInTheDocument();
+    expect(screen.getByText('아직 붙여둔 생각이 없어요.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '퇴근길 생각 수집기' })).not.toBeInTheDocument();
   });
 
   it('debounces integrated search and keeps it in the URL', async () => {
     const user = userEvent.setup();
+    useAuthStore.getState().setToken('test-token', 3_600);
+    queryClient.setQueryData(ideaKeys.all, { ideas: demoIdeas, source: 'network' });
     render(
       <AppProviders>
         <App />

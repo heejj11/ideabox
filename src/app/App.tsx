@@ -9,7 +9,6 @@ import { FilterBar } from '../features/filters/FilterBar';
 import { useUrlFilters } from '../features/filters/useUrlFilters';
 import { IdeaBoard } from '../features/ideas/IdeaBoard';
 import { IdeaDetailPanel } from '../features/ideas/IdeaDetailPanel';
-import { demoIdeas } from '../features/ideas/demoIdeas';
 import { useCreateIdeaMutation, useIdeasQuery, useUpdateIdeaMutation } from '../features/ideas/queries';
 import { signIn, signOut } from '../lib/google/auth';
 import { collectTags, filterAndSortIdeas } from '../lib/utils/search';
@@ -40,7 +39,7 @@ export function App() {
     }
   }, [authenticated, ideasQuery.data?.source, ideasQuery.refetch, isOnline]);
 
-  const allIdeas = authenticated ? (ideasQuery.data?.ideas ?? []) : demoIdeas;
+  const allIdeas = ideasQuery.data?.ideas ?? [];
   const visibleIdeas = useMemo(() => filterAndSortIdeas(allIdeas, filters), [allIdeas, filters]);
   const availableTags = useMemo(() => collectTags(allIdeas.filter((idea) => idea.status !== 'dropped')), [allIdeas]);
   const selectedIdea = allIdeas.find((idea) => idea.id === selectedIdeaId) ?? null;
