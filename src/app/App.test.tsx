@@ -1,11 +1,15 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach } from 'vitest';
+import { afterEach, beforeEach } from 'vitest';
 import { useAuthStore } from '../stores/authStore';
 import { useUiStore } from '../stores/uiStore';
 import { App } from './App';
 import { AppProviders } from './AppProviders';
 import { queryClient } from './queryClient';
+
+beforeEach(() => {
+  useAuthStore.getState().clear('unconfigured');
+});
 
 afterEach(() => {
   cleanup();
