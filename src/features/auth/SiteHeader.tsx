@@ -1,14 +1,15 @@
 import type { AuthStatus } from '../../stores/authStore';
 
 interface SiteHeaderProps {
+  authenticated: boolean;
   authStatus: AuthStatus;
   isOnline: boolean;
   onSignIn: () => void;
   onSignOut: () => void;
 }
 
-export function SiteHeader({ authStatus, isOnline, onSignIn, onSignOut }: SiteHeaderProps) {
-  const authenticated = authStatus === 'signed-in' || authStatus === 'renewing';
+export function SiteHeader({ authenticated, authStatus, isOnline, onSignIn, onSignOut }: SiteHeaderProps) {
+  const connecting = !authenticated && (authStatus === 'signing-in' || authStatus === 'renewing');
 
   return (
     <header className="site-header">
@@ -21,8 +22,13 @@ export function SiteHeader({ authStatus, isOnline, onSignIn, onSignOut }: SiteHe
           <span aria-hidden="true" />
           {isOnline ? '온라인' : '오프라인'}
         </span>
-        <button type="button" className="text-button" onClick={authenticated ? onSignOut : onSignIn}>
-          {authenticated ? '로그아웃' : '로그인'}
+        <button
+          type="button"
+          className="text-button"
+          onClick={authenticated ? onSignOut : onSignIn}
+          disabled={connecting}
+        >
+          {authenticated ? '로그아웃' : connecting ? '연결 중…' : '로그인'}
         </button>
       </div>
     </header>

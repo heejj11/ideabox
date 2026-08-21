@@ -7,7 +7,9 @@ export const GOOGLE_SCOPES = [
 
 const GIS_SCRIPT_ID = 'google-identity-services';
 const GIS_SCRIPT_SRC = 'https://accounts.google.com/gsi/client';
-const TOKEN_EXPIRY_BUFFER_MS = 60_000;
+export const TOKEN_EXPIRY_BUFFER_MS = 5 * 60_000;
+
+type TokenPrompt = '';
 
 let tokenClient: GoogleTokenClient | null = null;
 let clientId: string | null = null;
@@ -19,6 +21,16 @@ export class GoogleAuthError extends Error {
     super(message);
     this.name = 'GoogleAuthError';
   }
+}
+
+function popupErrorMessage(type: string, fallback?: string): string {
+  if (type === 'popup_failed_to_open') {
+    return 'Google 연결 창을 열지 못했습니다. 팝업 차단을 허용한 뒤 다시 시도해 주세요.';
+  }
+  if (type === 'popup_closed') {
+    return 'Google 연결 창이 닫혔습니다. 다시 연결해 주세요.';
+  }
+  return fallback || 'Google 로그인 창을 열지 못했습니다.';
 }
 
 function loadGoogleIdentityScript(): Promise<void> {
@@ -72,7 +84,7 @@ async function getTokenClient(): Promise<GoogleTokenClient> {
   return tokenClient;
 }
 
-function requestToken(prompt: '' | 'consent'): Promise<string> {
+function requestToken(prompt: TokenPrompt): Promise<string> {
   return getTokenClient().then(
     (client) =>
       new Promise<string>((resolve, reject) => {
@@ -91,7 +103,7 @@ function requestToken(prompt: '' | 'consent'): Promise<string> {
           resolve(response.access_token);
         };
         client.error_callback = (error) => {
-          reject(new GoogleAuthError(error.message || 'Google 로그인 창을 열지 못했습니다.', error.type));
+          reject(new GoogleAuthError(popupErrorMessage(error.type, error.message), error.type));
         };
         client.requestAccessToken({ prompt });
       })
@@ -106,10 +118,14 @@ export function configureGoogleAuth(nextClientId: string | undefined): void {
 }
 
 export async function signIn(): Promise<string> {
+  if (renewalPromise) {
+    return renewalPromise;
+  }
+
   useAuthStore.getState().setStatus('signing-in');
 
   try {
-    return await requestToken('consent');
+    return await requestToken('');
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Google 로그인을 완료하지 못했습니다.';
     useAuthStore.getState().setError(message);

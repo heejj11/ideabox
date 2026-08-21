@@ -10,7 +10,12 @@ import { useUrlFilters } from '../features/filters/useUrlFilters';
 import { IdeaBoard } from '../features/ideas/IdeaBoard';
 import { IdeaDetailPanel } from '../features/ideas/IdeaDetailPanel';
 import { useCreateIdeaMutation, useIdeasQuery, useUpdateIdeaMutation } from '../features/ideas/queries';
-import { signIn, signOut } from '../lib/google/auth';
+import {
+  getValidAccessToken,
+  signIn,
+  signOut,
+  TOKEN_EXPIRY_BUFFER_MS,
+} from '../lib/google/auth';
 import { collectTags, filterAndSortIdeas } from '../lib/utils/search';
 import { useNetworkState } from '../hooks/useNetworkState';
 import { useAuthStore } from '../stores/authStore';
@@ -32,6 +37,31 @@ export function App() {
   const createMutation = useCreateIdeaMutation();
   const updateMutation = useUpdateIdeaMutation();
   const [dismissedError, setDismissedError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!auth.accessToken) {
+      return undefined;
+    }
+
+    const renewOnInteraction = () => {
+      const current = useAuthStore.getState();
+      if (
+        current.status !== 'renewing' &&
+        current.accessToken &&
+        current.expiresAt - Date.now() <= TOKEN_EXPIRY_BUFFER_MS
+      ) {
+        void getValidAccessToken(true).catch(() => undefined);
+      }
+    };
+
+    window.addEventListener('pointerdown', renewOnInteraction, true);
+    window.addEventListener('keydown', renewOnInteraction, true);
+
+    return () => {
+      window.removeEventListener('pointerdown', renewOnInteraction, true);
+      window.removeEventListener('keydown', renewOnInteraction, true);
+    };
+  }, [auth.accessToken, auth.expiresAt]);
 
   useEffect(() => {
     if (authenticated && isOnline && ideasQuery.data?.source === 'cache') {
@@ -75,7 +105,13 @@ export function App() {
 
   return (
     <div className={`app-shell ${organizedMode ? 'app-shell--organized' : ''}`}>
-      <SiteHeader authStatus={auth.status} isOnline={isOnline} onSignIn={handleSignIn} onSignOut={handleSignOut} />
+      <SiteHeader
+        authenticated={authenticated}
+        authStatus={auth.status}
+        isOnline={isOnline}
+        onSignIn={handleSignIn}
+        onSignOut={handleSignOut}
+      />
       <AuthNotice status={auth.status} error={auth.error} onSignIn={handleSignIn} />
       {ideasQuery.data?.warning ? <ErrorBanner message={ideasQuery.data.warning} onRetry={() => void ideasQuery.refetch()} /> : null}
       {visibleError ? <ErrorBanner message={visibleError} onRetry={() => void ideasQuery.refetch()} onDismiss={() => setDismissedError(visibleError)} /> : null}
